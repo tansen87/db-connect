@@ -6,16 +6,7 @@ import DBconnect from "./components/DBconnect.vue";
 
 <template>
   <div class="container">
-    <div class="row">
-      <a href="https://github.com/tansen87" target="_blank">
-        <img src="./assets/github.svg" class="logo github" alt="Github logo" />
-      </a>
-    </div>
-
-    <!-- <p>Click on the icon to view the source code</p> -->
-    <!-- <hr/> -->
     <p>Connect Database</p>
     <DBconnect />
-
   </div>
 </template>

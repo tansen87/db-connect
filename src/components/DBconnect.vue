@@ -128,7 +128,7 @@ async function getData() {
       <el-form-item>
         <el-input
           v-model="form.sqlsrc"
-          :autosize="{ minRows: 2, maxRows: 5 }"
+          autosize
           type="textarea"
           placeholder="sql script"
           class="custom-textarea"
