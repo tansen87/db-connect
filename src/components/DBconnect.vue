@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive } from "vue";
-import { invoke } from "@tauri-apps/api/tauri";
+import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { ElMessage } from "element-plus";
 
@@ -21,67 +21,71 @@ listen("connErr", (event: any) => {
   const error: any = event.payload;
   const errmsg: any = "connect error: " + error;
   ElMessage.error(errmsg);
+  loading.value = false;
 });
 
 listen("errcode", (event: any) => {
   const errCode: any = event.payload;
   ElMessage.error(errCode);
+  loading.value = false;
 });
 
 listen("message", (event: any) => {
   const progress: any = event.payload;
   ElMessage.success(progress);
+  loading.value = false;
 });
 
 listen("queryErr", (event: any) => {
   const error: any = event.payload;
   const errmsg: any = "query error: " + error;
   ElMessage.error(errmsg);
+  loading.value = false;
 });
 
 // download data
 async function getData() {
-  if (form.host == "") {
+  if (form.host === "") {
     ElMessage.warning("host is empty.");
     return;
   }
-  if (form.port == "") {
+  if (form.port === "") {
     ElMessage.warning("port is empty.");
     return;
   }
-  if (form.user == "") {
+  if (form.user === "") {
     ElMessage.warning("user is empty.");
     return;
   }
-  if (form.pwd == "") {
+  if (form.pwd === "") {
     ElMessage.warning("password is empty.");
     return;
   }
-  if (form.db == "") {
+  if (form.db === "") {
     ElMessage.warning("database is empty.");
     return;
   }
-  if (form.table == "") {
+  if (form.table === "") {
     ElMessage.warning("table is empty.");
     return;
   }
-  if (form.sqlsrc == "") {
+  if (form.sqlsrc === "") {
     ElMessage.warning("sql script is empty.");
     return;
   }
-  if (form.outpath == "") {
+  if (form.outpath === "") {
     ElMessage.warning("output path is empty.");
     return;
   }
   if (
-    form.host != "" &&
-    form.port != "" &&
-    form.user != "" &&
-    form.pwd != "" &&
-    form.db != "" &&
-    form.table != "" &&
-    form.sqlsrc != "" &&
-    form.outpath != ""
+    form.host !== "" &&
+    form.port !== "" &&
+    form.user !== "" &&
+    form.pwd !== "" &&
+    form.db !== "" &&
+    form.table !== "" &&
+    form.sqlsrc !== "" &&
+    form.outpath !== ""
   ) {
     ElMessage.info("downloading...");
     loading.value = true;

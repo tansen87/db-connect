@@ -1,29 +1,22 @@
-use std::io::prelude::*;
+use std::{fs::{File, OpenOptions}, io::Write};
 
-use sqlx::{Row, Column};
 use futures::TryStreamExt;
-
+use sqlx::{Column, Row};
+use tauri::Emitter;
 
 async fn execute_query(
-    host: String, 
-    port: String, 
-    user: String, 
-    pwd: String, 
-    db: String, 
-    table: String, 
-    sqlsrc: String, 
-    repcol: String, 
-    outpath: String, 
-    window: tauri::Window
+    host: String,
+    port: String,
+    user: String,
+    pwd: String,
+    db: String,
+    table: String,
+    sqlsrc: String,
+    repcol: String,
+    outpath: String,
+    window: tauri::Window,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!(
-        "mysql://{}:{}@{}:{}/{}",
-        user,
-        pwd,
-        host,
-        port,
-        db
-    );
+    let url = format!("mysql://{}:{}@{}:{}/{}", user, pwd, host, port, db);
 
     let pool: sqlx::Pool<sqlx::MySql> = match sqlx::MySqlPool::connect(&url).await {
         Ok(pool) => pool,
@@ -34,8 +27,8 @@ async fn execute_query(
         }
     };
 
-    let _log_file = std::fs::File::create(format!("{}/logs.log", outpath)).expect("Failed to create file"); 
-    let mut log_file = std::fs::OpenOptions::new()
+    File::create(format!("{}/logs.log", outpath)).expect("Failed to create file");
+    let mut log_file = OpenOptions::new()
         .append(true)
         .open(format!("{}/logs.log", outpath))?;
     let check_msg = format!("Checking {}, please wait...", &table);
@@ -45,8 +38,7 @@ async fn execute_query(
 
     // query headers
     let sql_query_header = format!("{} LIMIT 10", sqlsrc.clone());
-    match sqlx::query(&sql_query_header).fetch_one(&pool).await 
-    {
+    match sqlx::query(&sql_query_header).fetch_one(&pool).await {
         Ok(rows) => {
             let col_num = rows.columns().len();
             let mut vec_col_name: Vec<&str> = Vec::new();
@@ -55,7 +47,7 @@ async fn execute_query(
                 vec_col_name.push(rows.column(num).name());
                 vec_col_type.push(rows.column(num).type_info().to_string())
             }
-            
+
             // execute query
             let sql_query = format!("{}", sqlsrc);
             let mut stream = sqlx::query(&sql_query).fetch(&pool);
@@ -79,13 +71,10 @@ async fn execute_query(
 
             // write headers
             wtr.serialize(vec_col_name.clone())?;
-            while let Some(row) = stream.try_next().await? 
-            {
+            while let Some(row) = stream.try_next().await? {
                 let mut vec_wtr_str = Vec::new();
-                for num in 0..col_num 
-                {
-                    let value = match &vec_col_type[num][..] 
-                    {
+                for num in 0..col_num {
+                    let value = match &vec_col_type[num][..] {
                         "DECIMAL" => {
                             let num: rust_decimal::Decimal = row.get(num);
                             num.to_string()
@@ -146,22 +135,24 @@ async fn execute_query(
             log_file.write_all(output_log.as_bytes())?;
 
             window.emit("message", &emit_msg)?;
-        },
+        }
         Err(error) => {
             let err_msg = format!("Error with {}: {}", &table, error);
             let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
             let err_msg_log = format!("{} => {}\n", &timestamp, &err_msg);
             window.emit("errcode", &err_msg)?;
-            let _failed_file = std::fs::File::create(format!("{}/failed.log", outpath)).expect("Failed to create file");
+            let _failed_file = std::fs::File::create(format!("{}/failed.log", outpath))
+                .expect("Failed to create file");
             let mut failed_file = std::fs::OpenOptions::new()
                 .append(true)
                 .open(format!("{}/failed.log", outpath))?;
-            failed_file.write_all(err_msg.as_bytes()).expect("Failed to write to file");
+            failed_file
+                .write_all(err_msg.as_bytes())
+                .expect("Failed to write to file");
             log_file.write_all(&err_msg_log.as_bytes())?;
-
         }
     }
-    
+
     let msg_done = "Download done.".to_string();
     let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string();
     let msg_done_log = format!("{} => {}\n", &timestamp, &msg_done);
@@ -175,9 +166,24 @@ fn folder_exists(path: &str) -> bool {
 }
 
 #[tauri::command]
-pub async fn download(host: String, port: String, user: String, pwd: String, db: String, table: String, sqlsrc: String, repcol: String, outpath: String, window: tauri::Window) {
+pub async fn download(
+    host: String,
+    port: String,
+    user: String,
+    pwd: String,
+    db: String,
+    table: String,
+    sqlsrc: String,
+    repcol: String,
+    outpath: String,
+    window: tauri::Window,
+) {
     let window_exec = window.clone();
-    match execute_query(host, port, user, pwd, db, table, sqlsrc, repcol, outpath, window).await {
+    match execute_query(
+        host, port, user, pwd, db, table, sqlsrc, repcol, outpath, window,
+    )
+    .await
+    {
         Ok(result) => result,
         Err(error) => {
             eprintln!("query Error: {}", error);
